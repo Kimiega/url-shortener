@@ -35,8 +35,9 @@ class UserRoutes(userRegistry: ActorRef[UserService.Command], authenticator: Aut
 
   val userRoutes: Route =
   pathPrefix("users") {
-    authenticateBasic(realm = "secure   site", authenticator.apply) { _ =>
+    authenticateBasic(realm = "secure   site", authenticator.apply) { _  =>
       concat(
+
         pathEnd {
           concat(
             get {
@@ -45,11 +46,13 @@ class UserRoutes(userRegistry: ActorRef[UserService.Command], authenticator: Aut
             post {
               entity(as[User]) { user =>
                 onSuccess(createUser(user)) { performed =>
-                  complete((StatusCodes.Created, performed))
+                  complete((StatusCodes.OK, performed))
                 }
+
               }
             })
         },
+
         path(Segment) { name =>
           concat(
             get {

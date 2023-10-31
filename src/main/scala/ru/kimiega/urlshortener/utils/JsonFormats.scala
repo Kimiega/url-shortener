@@ -1,6 +1,6 @@
 package ru.kimiega.urlshortener.utils
 
-import ru.kimiega.urlshortener.dtos.{ActionPerformed, Url, User, Users}
+import ru.kimiega.urlshortener.dtos.{ActionPerformed, FullUrl, Link, Url, Urls, User, Users}
 import spray.json.{DefaultJsonProtocol, JsString, JsValue, JsonFormat, deserializationError}
 
 import java.time.LocalDateTime
@@ -26,6 +26,9 @@ object JsonFormats {
   implicit val usersJsonFormat = jsonFormat1(Users)
 
   implicit val urlJsonFormat = jsonFormat4(Url)
+  implicit val fullUrlJsonFormat = jsonFormat2(FullUrl)
+  implicit val linkJsonFormat = jsonFormat1(Link)
+  implicit val urlsJsonFormat = jsonFormat1(Urls)
 
   implicit val actionPerformedJsonFormat = jsonFormat1(ActionPerformed)
 }

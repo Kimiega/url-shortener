@@ -8,73 +8,69 @@ import akka.http.scaladsl.server.Route
 import akka.util.Timeout
 import ru.kimiega.urlshortener.dtos._
 import ru.kimiega.urlshortener.security.Authenticator
-import ru.kimiega.urlshortener.services.{UrlService, UserService}
-import ru.kimiega.urlshortener.services.UserService._
+import ru.kimiega.urlshortener.services.UrlService
+import ru.kimiega.urlshortener.services.UrlService._
 
 import scala.concurrent.Future
 
-class UrlRoutes(userRegistry: ActorRef[UrlService.Command], authenticator: Authenticator)(implicit val system: ActorSystem[_]) {
+class UrlRoutes(urlService: ActorRef[UrlService.Command], authenticator: Authenticator)(implicit val system: ActorSystem[_]) {
 
   import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
   import ru.kimiega.urlshortener.utils.JsonFormats._
 
   private implicit val timeout = Timeout.create(system.settings.config.getDuration("app.routes.ask-timeout"))
 
-  def getFullUrl(): Future[Url] =
-    userRegistry.ask(GetUsers)
+  def getFullUrl(shortUrl: String): Future[GetUrlResponse] =
+    urlService.ask(GetUrl(shortUrl, _))
 
-  def getUser(name: String): Future[GetUserResponse] =
-    userRegistry.ask(GetUser(name, _))
+  def createUrl(url: FullUrl): Future[ActionPerformed] =
+    urlService.ask(CreateUrl(url, _))
 
-  def createUser(user: User): Future[ActionPerformed] =
-    userRegistry.ask(CreateUser(user, _))
+  def deleteUser(shortUrl: String): Future[ActionPerformed] =
+    urlService.ask(DeleteUrl(shortUrl, _))
 
-  def deleteUser(name: String): Future[ActionPerformed] =
-    userRegistry.ask(DeleteUser(name, _))
+  def getUserUrls(login: String): Future[Urls] =
+    urlService.ask(GetUrls(login, _))
 
   //#all-routes
   //#users-get-post
   //#users-get-delete
   val userRoutes: Route =
-  pathPrefix("users") {
-    authenticateBasic(realm = "secure   site", authenticator.apply) { _ =>
+  pathPrefix("u") {
+    concat(
+    authenticateBasic(realm = "secure   site", authenticator.apply) { login =>
       concat(
         //#users-get-delete
         pathEnd {
           concat(
             get {
-              complete(getUsers())
+             complete(getUserUrls(login))
             },
             post {
-              entity(as[User]) { user =>
-                onSuccess(createUser(user)) { performed =>
-                  complete((StatusCodes.Created, performed))
+              entity(as[Link]) { link =>
+                onSuccess(createUrl(FullUrl(link.link, login))) { performed =>
+                  complete(StatusCodes.Created, performed)
                 }
               }
             })
         },
-        //#users-get-delete
-        //#users-get-post
-        path(Segment) { name =>
-          concat(
-            get {
-              //#retrieve-user-info
-              rejectEmptyResponse {
-                onSuccess(getUser(name)) { response =>
-                  complete(response.maybeUser)
-                }
+       )
+    },
+
+      path(Segment) { shortUrl =>
+          get {
+            rejectEmptyResponse {
+              onSuccess(getFullUrl(shortUrl)) { response =>
+                if (response.maybeUrl.isDefined)
+                  redirect(response.maybeUrl.get.fullUrl, StatusCodes.PermanentRedirect)
+                else
+                  complete(StatusCodes.NotFound, "No such short link")
               }
-              //#retrieve-user-info
-            },
-            delete {
-              //#users-delete-logic
-              onSuccess(deleteUser(name)) { performed =>
-                complete((StatusCodes.OK, performed))
-              }
-              //#users-delete-logic
-            })
-        })
-    }
+            }
+            //#retrieve-user-info
+          }
+      }
+    )
     //#users-get-delete
   }
   //#all-routes
