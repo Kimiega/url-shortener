@@ -23,10 +23,10 @@ class UrlRoutes(urlService: ActorRef[UrlService.Command], authenticator: Authent
   def getFullUrl(shortUrl: String): Future[GetUrlResponse] =
     urlService.ask(GetUrl(shortUrl, _))
 
-  def createUrl(url: FullUrl): Future[ActionPerformed] =
+  def createUrl(url: FullUrl): Future[ActionPerformedCode] =
     urlService.ask(CreateUrl(url, _))
 
-  def deleteUser(shortUrl: String): Future[ActionPerformed] =
+  def deleteUrl(shortUrl: String): Future[ActionPerformedCode] =
     urlService.ask(DeleteUrl(shortUrl, _))
 
   def getUserUrls(login: String): Future[Urls] =
@@ -49,7 +49,7 @@ class UrlRoutes(urlService: ActorRef[UrlService.Command], authenticator: Authent
             post {
               entity(as[Link]) { link =>
                 onSuccess(createUrl(FullUrl(link.link, login))) { performed =>
-                  complete(StatusCodes.Created, performed)
+                  complete(performed.code, performed.transform())
                 }
               }
             })

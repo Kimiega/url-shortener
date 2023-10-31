@@ -3,7 +3,7 @@ package ru.kimiega.urlshortener.repository
 import akka.actor.typed.ActorRef
 import cats.effect.unsafe.implicits.global
 import doobie.implicits._
-import ru.kimiega.urlshortener.dtos.{ActionPerformed, GetUserResponse, User, Users}
+import ru.kimiega.urlshortener.dtos.{ActionPerformed, GetUserResponse, User, UserId, Users}
 import ru.kimiega.urlshortener.utils.RepositoryTransactor.Transactor
 
 
@@ -21,6 +21,13 @@ object UserRegistry {
   def dbGetUser(xa: Transactor, login: String): Option[User] = {
     sql"SELECT login, password FROM user_registry WHERE login = ${login}".
       query[User].
+      option.
+      transact(xa).
+      unsafeRunSync
+  }
+  def dbGetUserId(xa: Transactor, login: String): Option[UserId] = {
+    sql"SELECT id, login, password FROM user_registry WHERE login = ${login}".
+      query[UserId].
       option.
       transact(xa).
       unsafeRunSync

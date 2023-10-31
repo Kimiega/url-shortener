@@ -13,7 +13,7 @@ case class Authenticator(auth: BasicAuthConfig, pg : PostgresConfig, xa: Transac
       case p @ Credentials.Provided(id) if id == auth.user && p.verify(auth.password) => Some(id)
       case p @ Credentials.Provided(id) if {
         val user = UserRegistry.dbGetUser(xa, id)
-        user.isDefined && p.verify(user.get.password, Hasher.apply)
+        user.isDefined && p.verify(user.get.password, Hasher.hashPassword)
       } => Some(id)
       case _ => None
     }

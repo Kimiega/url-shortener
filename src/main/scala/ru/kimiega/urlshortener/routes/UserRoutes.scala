@@ -27,10 +27,10 @@ class UserRoutes(userRegistry: ActorRef[UserService.Command], authenticator: Aut
   def getUser(name: String): Future[GetUserResponse] =
     userRegistry.ask(GetUser(name, _))
 
-  def createUser(user: User): Future[ActionPerformed] =
+  def createUser(user: User): Future[ActionPerformedCode] =
     userRegistry.ask(CreateUser(user, _))
 
-  def deleteUser(name: String): Future[ActionPerformed] =
+  def deleteUser(name: String): Future[ActionPerformedCode] =
     userRegistry.ask(DeleteUser(name, _))
 
   val userRoutes: Route =
@@ -46,7 +46,7 @@ class UserRoutes(userRegistry: ActorRef[UserService.Command], authenticator: Aut
             post {
               entity(as[User]) { user =>
                 onSuccess(createUser(user)) { performed =>
-                  complete((StatusCodes.OK, performed))
+                  complete(performed.code, performed.transform())
                 }
 
               }
@@ -64,7 +64,7 @@ class UserRoutes(userRegistry: ActorRef[UserService.Command], authenticator: Aut
             },
             delete {
               onSuccess(deleteUser(name)) { performed =>
-                complete((StatusCodes.OK, performed))
+                complete((performed.code, performed.transform()))
               }
             })
         })
