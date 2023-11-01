@@ -55,6 +55,6 @@ object MainApp {
       Behaviors.empty
     }
 
-    val system = ActorSystem[Nothing](rootBehavior, "HelloAkkaHttpServer")
+    val system = ActorSystem[Nothing](rootBehavior, "UrlShortenerHttpServer")
   }
 }

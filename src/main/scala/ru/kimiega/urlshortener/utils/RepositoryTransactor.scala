@@ -9,7 +9,7 @@ object RepositoryTransactor {
 
   def apply(pgConfig: PostgresConfig): Transactor = {
     Transactor.fromDriverManager[IO](
-      "org.postgresql.Driver", pgConfig.url, pgConfig.user, pgConfig.pass
+      pgConfig.driver, pgConfig.url, pgConfig.user, pgConfig.pass
     )
   }
 }
