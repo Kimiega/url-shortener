@@ -2,6 +2,6 @@
 ## REST full API for urlshortener
 ### Technologies used:
 + Akka
-+ doobie
++ Doobie
 + Postgresql db
 + MVC pattern
