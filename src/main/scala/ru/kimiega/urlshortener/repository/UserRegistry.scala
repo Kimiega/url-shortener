@@ -7,8 +7,8 @@ import ru.kimiega.urlshortener.dtos.{ActionPerformed, GetUserResponse, User, Use
 import ru.kimiega.urlshortener.utils.RepositoryTransactor.Transactor
 
 
-object UserRegistry {
-  def dbGetUsers(xa: Transactor): Users = {
+class UserRegistry(xa: Transactor) {
+  def dbGetUsers(): Users = {
     Users(
       sql"SELECT login, password FROM user_registry".
       query[User].
@@ -18,14 +18,14 @@ object UserRegistry {
     )
   }
 
-  def dbGetUser(xa: Transactor, login: String): Option[User] = {
+  def dbGetUser(login: String): Option[User] = {
     sql"SELECT login, password FROM user_registry WHERE login = ${login}".
       query[User].
       option.
       transact(xa).
       unsafeRunSync
   }
-  def dbGetUserId(xa: Transactor, login: String): Option[UserId] = {
+  def dbGetUserId(login: String): Option[UserId] = {
     sql"SELECT id, login, password FROM user_registry WHERE login = ${login}".
       query[UserId].
       option.
@@ -33,7 +33,7 @@ object UserRegistry {
       unsafeRunSync
   }
 
-  def dbCreateUser(xa: Transactor, user: User): Unit = {
+  def dbCreateUser(user: User): Unit = {
     sql"INSERT INTO user_registry (login, password) VALUES(${user.login}, ${user.password})".
       update.
       withUniqueGeneratedKeys[Int]("id").
@@ -41,7 +41,7 @@ object UserRegistry {
       unsafeRunSync
   }
 
-  def dbDeleteUser(xa: Transactor, login: String): Unit = {
+  def dbDeleteUser(login: String): Unit = {
     sql"DELETE FROM user_registry WHERE login = ${login}".
       update.
       run.

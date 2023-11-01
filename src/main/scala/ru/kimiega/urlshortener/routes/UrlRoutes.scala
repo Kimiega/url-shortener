@@ -32,19 +32,15 @@ class UrlRoutes(urlService: ActorRef[UrlService.Command], authenticator: Authent
   def getUserUrls(login: String): Future[Urls] =
     urlService.ask(GetUrls(login, _))
 
-  //#all-routes
-  //#users-get-post
-  //#users-get-delete
   val userRoutes: Route =
   pathPrefix("u") {
     concat(
-    authenticateBasic(realm = "secure   site", authenticator.apply) { login =>
+    authenticateBasic(realm = "secure   site", authenticator.authUser) { login =>
       concat(
-        //#users-get-delete
         pathEnd {
           concat(
             get {
-             complete(getUserUrls(login))
+              complete(getUserUrls(login))
             },
             post {
               entity(as[Link]) { link =>
@@ -53,25 +49,21 @@ class UrlRoutes(urlService: ActorRef[UrlService.Command], authenticator: Authent
                 }
               }
             })
-        },
-       )
+        }
+      )
     },
-
       path(Segment) { shortUrl =>
-          get {
-            rejectEmptyResponse {
-              onSuccess(getFullUrl(shortUrl)) { response =>
-                if (response.maybeUrl.isDefined)
-                  redirect(response.maybeUrl.get.fullUrl, StatusCodes.PermanentRedirect)
-                else
-                  complete(StatusCodes.NotFound, "No such short link")
-              }
+        get {
+          rejectEmptyResponse {
+            onSuccess(getFullUrl(shortUrl)) { response =>
+              if (response.maybeUrl.isDefined)
+                redirect(response.maybeUrl.get.fullUrl, StatusCodes.PermanentRedirect)
+              else
+                complete(StatusCodes.NotFound, "No such short link")
             }
-            //#retrieve-user-info
           }
+        }
       }
     )
-    //#users-get-delete
   }
-  //#all-routes
 }

@@ -35,9 +35,9 @@ class UserRoutes(userRegistry: ActorRef[UserService.Command], authenticator: Aut
 
   val userRoutes: Route =
   pathPrefix("users") {
-    authenticateBasic(realm = "secure   site", authenticator.apply) { _  =>
-      concat(
-
+    concat(
+      authenticateBasic(realm = "secure   site", authenticator.authAdmin) {_ =>
+        concat(
         pathEnd {
           concat(
             get {
@@ -48,12 +48,31 @@ class UserRoutes(userRegistry: ActorRef[UserService.Command], authenticator: Aut
                 onSuccess(createUser(user)) { performed =>
                   complete(performed.code, performed.transform())
                 }
-
               }
-            })
+            }
+          )
         },
-
+          path(Segment) { login =>
+            concat(
+              get {
+                rejectEmptyResponse {
+                  onSuccess(getUser(login)) { response =>
+                    complete(response.maybeUser)
+                  }
+                }
+              },
+              delete {
+                onSuccess(deleteUser(login)) { performed =>
+                  complete((performed.code, performed.transform()))
+                }
+              })
+          }
+        )
+      },
+      authenticateBasic(realm = "secure   site", authenticator.authUser) { login =>
         path(Segment) { name =>
+          if (name != login) complete(StatusCodes.Forbidden, "You are trying to access an account that is not yours")
+          else
           concat(
             get {
               rejectEmptyResponse {
@@ -67,7 +86,8 @@ class UserRoutes(userRegistry: ActorRef[UserService.Command], authenticator: Aut
                 complete((performed.code, performed.transform()))
               }
             })
-        })
-    }
+        }
+      }
+    )
   }
 }

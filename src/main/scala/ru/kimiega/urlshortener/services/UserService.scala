@@ -5,7 +5,7 @@ import akka.actor.typed.scaladsl.Behaviors
 import akka.http.scaladsl.model.StatusCodes
 import ru.kimiega.urlshortener.configuration.PostgresConfig
 import ru.kimiega.urlshortener.dtos.{ActionPerformed, ActionPerformedCode, GetUserResponse, User, Users}
-import ru.kimiega.urlshortener.repository.UserRegistry._
+import ru.kimiega.urlshortener.repository.UserRegistry
 import ru.kimiega.urlshortener.utils.{Hasher, RepositoryTransactor}
 import ru.kimiega.urlshortener.utils.RepositoryTransactor.Transactor
 
@@ -16,19 +16,19 @@ object UserService {
   final case class GetUser(login: String, replyTo: ActorRef[GetUserResponse]) extends Command
   final case class DeleteUser(login: String, replyTo: ActorRef[ActionPerformedCode]) extends Command
 
-  def apply(pgConfig: PostgresConfig): Behavior[Command] = {
-    registry(RepositoryTransactor(pgConfig))
+  def apply(userRep: UserRegistry): Behavior[Command] = {
+    registry(userRep)
   }
 
-  private def registry(xa: Transactor): Behavior[Command] =
+  private def registry(userRep: UserRegistry): Behavior[Command] =
     Behaviors.receiveMessage {
       case GetUsers(replyTo) =>
-        replyTo ! dbGetUsers(xa)
+        replyTo ! userRep.dbGetUsers()
         Behaviors.same
 
       case CreateUser(user, replyTo) =>
         try {
-          dbCreateUser(xa, User(user.login, Hasher.hashPassword(user.password)))
+          userRep.dbCreateUser(User(user.login, Hasher.hashPassword(user.password)))
           replyTo ! ActionPerformedCode(s"User ${user.login} created.", StatusCodes.Created)
         }
         catch {
@@ -37,12 +37,12 @@ object UserService {
         Behaviors.same
 
       case GetUser(name, replyTo) =>
-        replyTo !  GetUserResponse(dbGetUser(xa, name))
+        replyTo !  GetUserResponse(userRep.dbGetUser(name))
         Behaviors.same
 
       case DeleteUser(login, replyTo) =>
         replyTo ! ActionPerformedCode(s"User $login deleted.", StatusCodes.OK)
-        dbDeleteUser(xa, login)
+        userRep.dbDeleteUser(login)
         Behaviors.same
     }
 }

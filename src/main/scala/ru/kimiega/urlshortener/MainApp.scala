@@ -6,6 +6,7 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.{Directives, Route}
 import com.typesafe.config.ConfigFactory
 import ru.kimiega.urlshortener.configuration.{BasicAuthConfig, PostgresConfig}
+import ru.kimiega.urlshortener.repository.{UrlRepository, UserRegistry}
 import ru.kimiega.urlshortener.routes.{UrlRoutes, UserRoutes}
 import ru.kimiega.urlshortener.security.Authenticator
 import ru.kimiega.urlshortener.services.{UrlService, UserService}
@@ -33,18 +34,25 @@ object MainApp {
     val config = ConfigFactory.load("application.conf")
     val pgConfig = PostgresConfig(config)
     val authConfig = BasicAuthConfig(config)
-    val authenticator = Authenticator(authConfig, pgConfig, RepositoryTransactor(pgConfig))
+    val xa = RepositoryTransactor(pgConfig)
+    val urlRepository = new UrlRepository(xa)
+    val userRegistry = new UserRegistry(xa)
+    val authenticator = new Authenticator(authConfig, userRegistry)
+
     val rootBehavior = Behaviors.setup[Nothing] { context =>
-      val userRegistryActor = context.spawn(UserService(pgConfig), "UserRegistryActor")
-      val urlRepositoryActor = context.spawn(UrlService(pgConfig), "UrlRepositoryActor")
+      val userRegistryActor = context.spawn(UserService(userRegistry), "UserRegistryActor")
+      val urlRepositoryActor = context.spawn(UrlService(urlRepository, userRegistry), "UrlRepositoryActor")
+
       context.watch(userRegistryActor)
       context.watch(urlRepositoryActor)
+
       val userRoutes = new UserRoutes(userRegistryActor, authenticator)(context.system)
       val urlRoutes = new UrlRoutes(urlRepositoryActor, authenticator)(context.system)
       startHttpServer(Directives.concat(userRoutes.userRoutes, urlRoutes.userRoutes))(context.system)
 
       Behaviors.empty
     }
+
     val system = ActorSystem[Nothing](rootBehavior, "HelloAkkaHttpServer")
   }
 }
