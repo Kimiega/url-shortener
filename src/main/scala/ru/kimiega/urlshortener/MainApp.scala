@@ -16,10 +16,10 @@ import scala.util.Failure
 import scala.util.Success
 
 object MainApp {
-  private def startHttpServer(routes: Route)(implicit system: ActorSystem[_]): Unit = {
+  private def startHttpServer(routes: Route, host: String, port: Int)(implicit system: ActorSystem[_]): Unit = {
     import system.executionContext
 
-    val futureBinding = Http().newServerAt("localhost", 8080).bind(routes)
+    val futureBinding = Http().newServerAt(host, port).bind(routes)
     futureBinding.onComplete {
       case Success(binding) =>
         val address = binding.localAddress
@@ -38,6 +38,8 @@ object MainApp {
     val urlRepository = new UrlRepository(xa)
     val userRegistry = new UserRegistry(xa)
     val authenticator = new Authenticator(authConfig, userRegistry)
+    val host = config.getString("app.server.host")
+    val port = config.getInt("app.server.port")
 
     val rootBehavior = Behaviors.setup[Nothing] { context =>
       val userRegistryActor = context.spawn(UserService(userRegistry), "UserRegistryActor")
@@ -48,7 +50,7 @@ object MainApp {
 
       val userRoutes = new UserRoutes(userRegistryActor, authenticator)(context.system)
       val urlRoutes = new UrlRoutes(urlRepositoryActor, authenticator)(context.system)
-      startHttpServer(Directives.concat(userRoutes.userRoutes, urlRoutes.userRoutes))(context.system)
+      startHttpServer(Directives.concat(userRoutes.userRoutes, urlRoutes.userRoutes), host, port)(context.system)
 
       Behaviors.empty
     }
